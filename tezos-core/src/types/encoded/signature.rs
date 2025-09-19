@@ -10,7 +10,7 @@ use crate::{
     },
     Error, Result,
 };
-use log::error;
+
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 

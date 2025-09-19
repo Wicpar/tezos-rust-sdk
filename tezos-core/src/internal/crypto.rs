@@ -5,6 +5,7 @@ pub struct Crypto {
     ed25519_provider: Option<Box<dyn CryptoProvider>>,
     secp256_k1_provider: Option<Box<dyn CryptoProvider>>,
     p256_provider: Option<Box<dyn CryptoProvider>>,
+    bls12_381_provider: Option<Box<dyn CryptoProvider>>,
 }
 
 impl Crypto {
@@ -12,11 +13,13 @@ impl Crypto {
         ed25519_provider: Option<Box<dyn CryptoProvider>>,
         secp256_k1_provider: Option<Box<dyn CryptoProvider>>,
         p256_provider: Option<Box<dyn CryptoProvider>>,
+        bls12_381_provider: Option<Box<dyn CryptoProvider>>,
     ) -> Self {
         Self {
             ed25519_provider,
             secp256_k1_provider,
             p256_provider,
+            bls12_381_provider,
         }
     }
 
@@ -71,6 +74,25 @@ impl Crypto {
 
     pub fn verify_p256(&self, message: &[u8], signature: &[u8], public_key: &[u8]) -> Result<bool> {
         self.p256_provider
+            .as_ref()
+            .ok_or(Error::CryptoProviderNotSet)?
+            .verify(message, signature, public_key)
+    }
+
+    pub fn sign_bls12_381(&self, message: &[u8], secret: &[u8]) -> Result<Vec<u8>> {
+        self.bls12_381_provider
+            .as_ref()
+            .ok_or(Error::CryptoProviderNotSet)?
+            .sign(message, secret)
+    }
+
+    pub fn verify_bls12_381(
+        &self,
+        message: &[u8],
+        signature: &[u8],
+        public_key: &[u8],
+    ) -> Result<bool> {
+        self.bls12_381_provider
             .as_ref()
             .ok_or(Error::CryptoProviderNotSet)?
             .verify(message, signature, public_key)

@@ -1,9 +1,10 @@
 use tezos_core::{
     internal::crypto::Crypto,
     types::encoded::{
-        Ed25519PublicKey, Ed25519SecretKey, Ed25519Signature, Encoded, P256PublicKey,
-        P256SecretKey, P256Signature, PublicKey, Secp256K1PublicKey, Secp256K1SecretKey,
-        Secp256K1Signature, SecretKey, Signature,
+        Bls12_381PublicKey, Bls12_381SecretKey, Bls12_381Signature, Ed25519PublicKey,
+        Ed25519SecretKey, Ed25519Signature, Encoded, P256PublicKey, P256SecretKey, P256Signature,
+        PublicKey, Secp256K1PublicKey, Secp256K1SecretKey, Secp256K1Signature, SecretKey,
+        Signature,
     },
 };
 
@@ -82,6 +83,7 @@ impl Signer<SecretKey> for OperationSigner {
             SecretKey::Ed25519(key) => self.sign(message, key).map(|signature| signature.into()),
             SecretKey::Secp256K1(key) => self.sign(message, key).map(|signature| signature.into()),
             SecretKey::P256(key) => self.sign(message, key).map(|signature| signature.into()),
+            SecretKey::Bls12_381(key) => self.sign(message, key).map(|signature| signature.into()),
         }
     }
 }
@@ -94,6 +96,7 @@ impl Verifier<PublicKey> for OperationSigner {
             PublicKey::Ed25519(key) => self.verify(message, key),
             PublicKey::Secp256K1(key) => self.verify(message, key),
             PublicKey::P256(key) => self.verify(message, key),
+            PublicKey::Bls12_381(key) => self.verify(message, key),
         }
     }
 }
@@ -172,6 +175,31 @@ impl Verifier<P256PublicKey> for OperationSigner {
         let key = key.to_bytes()?;
         self.verify_raw(message, &key, |message, signature, key| {
             Ok(self.crypto.verify_p256(message, signature, key)?)
+        })
+    }
+}
+impl Signer<Bls12_381SecretKey> for OperationSigner {
+    type Message = UnsignedOperation;
+    type Output = Bls12_381Signature;
+    type Error = Error;
+
+    fn sign(&self, message: &Self::Message, secret: &Bls12_381SecretKey) -> Result<Self::Output> {
+        let key = secret.to_bytes()?;
+        let signature = self.sign_raw(message, &key, |message, secret| {
+            Ok(self.crypto.sign_bls12_381(message, secret)?)
+        })?;
+
+        Ok((&signature).try_into()?)
+    }
+}
+
+impl Verifier<Bls12_381PublicKey> for OperationSigner {
+    type Message = SignedOperation;
+
+    fn verify(&self, message: &Self::Message, key: &Bls12_381PublicKey) -> Result<bool> {
+        let key = key.to_bytes()?;
+        self.verify_raw(message, &key, |message, signature, key| {
+            Ok(self.crypto.verify_bls12_381(message, signature, key)?)
         })
     }
 }

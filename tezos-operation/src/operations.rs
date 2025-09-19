@@ -213,7 +213,7 @@ impl SignedOperation {
 
     /// Static method that calculates and encodes operation hash given its forged bytes (including signature)
     pub fn operation_hash(payload: &[u8]) -> Result<OperationHash> {
-        let crypto = Crypto::new(None, None, None);
+        let crypto = Crypto::new(None, None, None, None);
         let hash = crypto.blake2b(payload, 32)?;
         OperationHash::from_bytes(&hash).map_err(|e| e.into())
     }

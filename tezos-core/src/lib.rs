@@ -169,6 +169,10 @@ pub use crate::{
 ///     fn get_p256_crypto_provider(&self) -> Option<Box<dyn CryptoProvider>> {
 ///         todo!()
 ///     }
+///
+///     fn get_bls12_381_crypto_provider(&self) -> Option<Box<dyn CryptoProvider>> {
+///         todo!()
+///     }
 /// }
 ///
 /// let tezos = Tezos::new(Box::new(MyCryptoConfig));
@@ -189,6 +193,7 @@ impl Tezos {
             self.crypto_config.get_ed25519_crypto_provider(),
             self.crypto_config.get_secp256_k1_crypto_provider(),
             self.crypto_config.get_p256_crypto_provider(),
+            self.crypto_config.get_bls12_381_crypto_provider(),
         )
     }
 }
@@ -204,6 +209,9 @@ pub trait CryptoConfig {
     /// Should provide an instance of a structure implementing the [CryptoProvider] trait that implements the trait for p256 curve.
     /// If `None` is returned, then the functionality is considered not available.
     fn get_p256_crypto_provider(&self) -> Option<Box<dyn CryptoProvider>>;
+    /// Should provide a `CryptoProvider` for BLS12-381 (tz4).
+    /// If `None` is returned, the functionality is considered not available.
+    fn get_bls12_381_crypto_provider(&self) -> Option<Box<dyn CryptoProvider>>;
 }
 
 /// A structure providing the default implementation of [CryptoConfig].
@@ -242,6 +250,18 @@ impl CryptoConfig for DefaultCryptoConfig {
             cfg_if! {
                 if #[cfg(feature = "p256")] {
                     Some(Box::new(DefaultP256CryptoProvider))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    fn get_bls12_381_crypto_provider(&self) -> Option<Box<dyn CryptoProvider>> {
+        {
+            cfg_if! {
+                if #[cfg(feature = "bls12_381")] {
+                    Some(Box::new(DefaultBls12_381CryptoProvider))
                 } else {
                     None
                 }
