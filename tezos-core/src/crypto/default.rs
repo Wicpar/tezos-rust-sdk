@@ -1,4 +1,9 @@
-#[cfg(any(feature = "ed25519", feature = "secp256_k1", feature = "p256"))]
+#[cfg(any(
+    feature = "ed25519",
+    feature = "secp256_k1",
+    feature = "p256",
+    feature = "bls12_381"
+))]
 use crate::{CryptoProvider, Error, Result};
 
 /// Default implementation for the ed25519 crypto provider. It is activated by enabling the `ed25519` feature.
@@ -97,6 +102,48 @@ impl CryptoProvider for DefaultP256CryptoProvider {
             p256::ecdsa::Signature::from_bytes(signature.into())
                 .map_err(|_error| Error::InvalidSignatureBytes)?;
         Ok(vk.verify_prehash(message, &signature).is_ok())
+    }
+}
+
+/// Default implementation for the bls12_381 (tz4) crypto provider. Activated by `bls12_381`.
+///
+/// Uses Supranational blst (MinPk): 48B compressed G1 pubkeys, 96B compressed G2 signatures.
+/// POP ciphersuite DST per IETF: BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_
+#[cfg(feature = "bls12_381")]
+#[derive(Debug)]
+pub struct DefaultBls12_381CryptoProvider;
+
+#[cfg(feature = "bls12_381")]
+impl CryptoProvider for DefaultBls12_381CryptoProvider {
+    fn sign(&self, message: &[u8], secret: &[u8]) -> Result<Vec<u8>> {
+        use blst::min_pk as bls;
+        // Expect 32-byte secret key (serialized blst SK). Return InvalidSecretKeyBytes on mismatch.
+        let sk = bls::SecretKey::from_bytes(secret).map_err(|_| Error::InvalidSecretKeyBytes)?;
+        // IETF POP ciphersuite (MinPk => G2 signatures)
+        const DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
+        let sig = sk.sign(message, DST, &[]);
+        Ok(sig.compress().to_vec()) // 96 bytes
+    }
+
+    fn verify(
+        &self,
+        message: &[u8],
+        signature_bytes: &[u8],
+        public_key_bytes: &[u8],
+    ) -> Result<bool> {
+        use blst::min_pk as bls;
+        // Public key is 48B compressed G1; signature is 96B compressed G2
+        let pk = bls::PublicKey::uncompress(public_key_bytes)
+            .map_err(|_| Error::InvalidPublicKeyBytes)?;
+        // Optional validation (checks subgroup, etc.)
+        if pk.validate().is_err() {
+            return Ok(false);
+        }
+        let sig = bls::Signature::uncompress(signature_bytes)
+            .map_err(|_| Error::InvalidSignatureBytes)?;
+
+        const DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
+        Ok(sig.verify(true, message, DST, &[], &pk, true) == blst::BLST_ERROR::BLST_SUCCESS)
     }
 }
 
@@ -491,6 +538,75 @@ mod test {
             assert_eq!(expected, result);
         }
 
+        Ok(())
+    }
+
+    // ---- tz4 / bls12_381 ----------------------------------------------------
+    #[cfg(feature = "bls12_381")]
+    use super::DefaultBls12_381CryptoProvider;
+
+    #[cfg(feature = "bls12_381")]
+    fn bls12_381_secret() -> &'static [u8] {
+        // 32-byte serialized blst SecretKey (example; keep stable for deterministic tests)
+        &[
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE,
+            0xF0, 0x01, 0x02, 0x13, 0x24, 0x35, 0x46, 0x57, 0x68, 0x79, 0x8A, 0x9B, 0xAC, 0xBD,
+            0xCE, 0xDF, 0xE0, 0xF1,
+        ]
+    }
+
+    #[cfg(feature = "bls12_381")]
+    fn bls12_381_public_key_from_secret(sk_bytes: &[u8]) -> Vec<u8> {
+        use blst::min_pk as bls;
+        let sk = bls::SecretKey::from_bytes(sk_bytes).expect("valid SK");
+        let pk = sk.sk_to_pk();
+        pk.compress().to_vec() // 48 bytes
+    }
+
+    #[cfg(feature = "bls12_381")]
+    fn bls12_381_expected_signature(sk_bytes: &[u8], msg: &[u8]) -> Vec<u8> {
+        use blst::min_pk as bls;
+        const DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
+        let sk = bls::SecretKey::from_bytes(sk_bytes).expect("valid SK");
+        sk.sign(msg, DST, &[]).compress().to_vec() // 96 bytes
+    }
+
+    #[cfg(feature = "bls12_381")]
+    #[test]
+    fn test_bls12_381_sign() -> Result<()> {
+        let cp = DefaultBls12_381CryptoProvider;
+        let secret = bls12_381_secret();
+
+        let vectors: &[&[u8]] = &[
+            b"The Times 03/Jan/2009 Chancellor on brink of second bailout for banks",
+            b"hello tz4",
+        ];
+
+        for msg in vectors {
+            let expected = bls12_381_expected_signature(secret, msg);
+            let got = cp.sign(msg, secret)?;
+            assert_eq!(expected, got);
+            assert_eq!(got.len(), 96);
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "bls12_381")]
+    #[test]
+    fn test_bls12_381_verify() -> Result<()> {
+        let cp = DefaultBls12_381CryptoProvider;
+        let secret = bls12_381_secret();
+        let public_key = bls12_381_public_key_from_secret(secret);
+
+        let ok_msg = b"verify me tz4";
+        let bad_msg = b"verify me tz4!";
+
+        let sig = cp.sign(ok_msg, secret)?;
+        assert!(cp.verify(ok_msg, &sig, &public_key)?);
+        assert!(!cp.verify(bad_msg, &sig, &public_key)?);
+
+        // Basic length sanity
+        assert_eq!(public_key.len(), 48);
         Ok(())
     }
 }

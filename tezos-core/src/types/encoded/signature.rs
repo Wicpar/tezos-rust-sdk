@@ -1,18 +1,18 @@
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-
 use crate::{
     internal::{
         coder::{ConsumingDecoder, EncodedBytesCoder},
         consumable_list::ConsumableList,
     },
     types::encoded::{
-        ed25519_signature::Ed25519Signature, generic_signature::GenericSignature,
-        p256_signature::P256Signature, secp256_k1_signature::Secp256K1Signature, Encoded,
-        MetaEncoded,
+        bls12_381_signature::Bls12_381Signature, ed25519_signature::Ed25519Signature,
+        generic_signature::GenericSignature, p256_signature::P256Signature,
+        secp256_k1_signature::Secp256K1Signature, Encoded, MetaEncoded,
     },
     Error, Result,
 };
+use log::error;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 /// Group of base58 encoded signatures.
 ///
@@ -32,15 +32,18 @@ pub enum Signature {
     Ed25519(Ed25519Signature),
     Secp256K1(Secp256K1Signature),
     P256(P256Signature),
+    Bls12_381(Bls12_381Signature),
 }
 
 impl Signature {
+    /// Will fail for Bls12_381 signatures (96 bytes)
     pub fn to_generic_signature(self) -> Result<GenericSignature> {
         match self {
             Signature::Generic(value) => Ok(value),
             Signature::Ed25519(value) => (&value.to_bytes()?).try_into(),
             Signature::Secp256K1(value) => (&value.to_bytes()?).try_into(),
             Signature::P256(value) => (&value.to_bytes()?).try_into(),
+            Signature::Bls12_381(_) => Err(Error::InvalidSignatureBytes),
         }
     }
 }
@@ -54,6 +57,7 @@ impl Encoded for Signature {
             Self::Ed25519(value) => value.value(),
             Self::Secp256K1(value) => value.value(),
             Self::P256(value) => value.value(),
+            Self::Bls12_381(value) => value.value(),
         }
     }
 
@@ -63,6 +67,7 @@ impl Encoded for Signature {
             Self::Ed25519(value) => value.meta(),
             Self::Secp256K1(value) => value.meta(),
             Self::P256(value) => value.meta(),
+            Self::Bls12_381(value) => value.meta(),
         }
     }
 
@@ -79,6 +84,9 @@ impl Encoded for Signature {
         if P256Signature::is_valid_base58(&base58) {
             return Ok(Self::P256(P256Signature::new(base58)?));
         }
+        if Bls12_381Signature::is_valid_base58(&base58) {
+            return Ok(Self::Bls12_381(Bls12_381Signature::new(base58)?));
+        }
         Err(Error::InvalidBase58EncodedData {
             description: base58,
         })
@@ -90,6 +98,7 @@ impl Encoded for Signature {
             Self::Ed25519(value) => value.to_bytes(),
             Self::Secp256K1(value) => value.to_bytes(),
             Self::P256(value) => value.to_bytes(),
+            Self::Bls12_381(value) => value.to_bytes(),
         }
     }
 
@@ -105,6 +114,9 @@ impl Encoded for Signature {
         }
         if P256Signature::is_valid_bytes(bytes) {
             return Ok(Self::P256(P256Signature::from_bytes(bytes)?));
+        }
+        if Bls12_381Signature::is_valid_bytes(bytes) {
+            return Ok(Self::Bls12_381(Bls12_381Signature::from_bytes(bytes)?));
         }
 
         Ok(Self::Generic(GenericSignature::from_bytes(bytes)?))
@@ -131,6 +143,11 @@ impl Encoded for Signature {
         }
         if P256Signature::is_valid_prefixed_consumable_bytes(bytes.inner_value()) {
             return Ok(Self::P256(P256Signature::from_consumable_bytes(bytes)?));
+        }
+        if Bls12_381Signature::is_valid_prefixed_consumable_bytes(bytes.inner_value()) {
+            return Ok(Self::Bls12_381(Bls12_381Signature::from_consumable_bytes(
+                bytes,
+            )?));
         }
 
         Ok(Self::Generic(GenericSignature::from_consumable_bytes(
@@ -160,6 +177,12 @@ impl From<Secp256K1Signature> for Signature {
 impl From<P256Signature> for Signature {
     fn from(value: P256Signature) -> Self {
         Self::P256(value)
+    }
+}
+
+impl From<Bls12_381Signature> for Signature {
+    fn from(value: Bls12_381Signature) -> Self {
+        Self::Bls12_381(value)
     }
 }
 

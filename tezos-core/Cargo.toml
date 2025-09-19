@@ -15,15 +15,18 @@ regex = "1"
 ed25519-dalek = { version = "1.0.1", optional = true }
 k256 = { version = "0.13", optional = true, features = ["ecdsa"] }
 p256 = { version = "0.13", optional = true, features = ["ecdsa"] }
+blst = {  version = "0.3", optional = true }
 hex = "0.4"
 lazy_static = "1"
 serde = { version = "1", features = ["derive"], optional = true }
 blake2 = "0.10"
 cfg-if = "1"
+log = "0.4.28"
 
 [features]
-full_crypto = ["ed25519", "secp256_k1", "p256"]
+full_crypto = ["ed25519", "secp256_k1", "p256", "bls12_381"]
 ed25519 = ["dep:ed25519-dalek"]
 secp256_k1 = ["dep:k256"]
 p256 = ["dep:p256"]
+bls12_381 = ["dep:blst"]
 serde = ["dep:serde"]

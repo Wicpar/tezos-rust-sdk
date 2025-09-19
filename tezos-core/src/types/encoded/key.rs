@@ -7,8 +7,9 @@ use crate::{
         crypto::blake2b,
     },
     types::encoded::{
-        Ed25519PublicKey, Ed25519PublicKeyHash, Ed25519SecretKey, Encoded, ImplicitAddress,
-        MetaEncoded, P256PublicKey, P256PublicKeyHash, P256SecretKey, Secp256K1PublicKey,
+        Bls12_381PublicKey, Bls12_381PublicKeyHash, Bls12_381SecretKey, Ed25519PublicKey,
+        Ed25519PublicKeyHash, Ed25519SecretKey, Encoded, ImplicitAddress, MetaEncoded,
+        P256PublicKey, P256PublicKeyHash, P256SecretKey, Secp256K1PublicKey,
         Secp256K1PublicKeyHash, Secp256K1SecretKey,
     },
     Error, Result,
@@ -132,6 +133,7 @@ pub enum SecretKey {
     Ed25519(Ed25519SecretKey),
     Secp256K1(Secp256K1SecretKey),
     P256(P256SecretKey),
+    Bls12_381(Bls12_381SecretKey),
 }
 
 impl SecretKey {
@@ -139,12 +141,14 @@ impl SecretKey {
         Ed25519SecretKey::is_valid_base58(value)
             || Secp256K1SecretKey::is_valid_base58(value)
             || P256SecretKey::is_valid_base58(value)
+            || Bls12_381SecretKey::is_valid_base58(value)
     }
 
     pub fn is_valid_bytes(value: &[u8]) -> bool {
         Ed25519SecretKey::is_valid_bytes(value)
             || Secp256K1SecretKey::is_valid_bytes(value)
             || P256SecretKey::is_valid_bytes(value)
+            || Bls12_381SecretKey::is_valid_bytes(value)
     }
 }
 
@@ -156,6 +160,7 @@ impl Encoded for SecretKey {
             Self::Ed25519(value) => value.value(),
             Self::Secp256K1(value) => value.value(),
             Self::P256(value) => value.value(),
+            Self::Bls12_381(value) => value.value(),
         }
     }
 
@@ -164,6 +169,7 @@ impl Encoded for SecretKey {
             Self::Ed25519(value) => value.meta(),
             Self::Secp256K1(value) => value.meta(),
             Self::P256(value) => value.meta(),
+            Self::Bls12_381(value) => value.meta(),
         }
     }
 
@@ -176,6 +182,9 @@ impl Encoded for SecretKey {
         }
         if P256SecretKey::is_valid_base58(&value) {
             return Ok(Self::P256(P256SecretKey::new(value)?));
+        }
+        if Bls12_381SecretKey::is_valid_base58(&value) {
+            return Ok(Self::Bls12_381(Bls12_381SecretKey::new(value)?));
         }
         Err(Error::InvalidBase58EncodedData { description: value })
     }
@@ -190,6 +199,9 @@ impl Encoded for SecretKey {
         if P256SecretKey::is_valid_bytes(bytes) {
             return Ok(Self::P256(P256SecretKey::from_bytes(bytes)?));
         }
+        if Bls12_381SecretKey::is_valid_bytes(bytes) {
+            return Ok(Self::Bls12_381(Bls12_381SecretKey::from_bytes(bytes)?));
+        }
         Err(Error::InvalidBytes)
     }
 }
@@ -200,6 +212,7 @@ impl From<SecretKey> for String {
             SecretKey::Ed25519(value) => value.into(),
             SecretKey::Secp256K1(value) => value.into(),
             SecretKey::P256(value) => value.into(),
+            SecretKey::Bls12_381(value) => value.into(),
         }
     }
 }
@@ -254,6 +267,12 @@ impl From<P256SecretKey> for SecretKey {
     }
 }
 
+impl From<Bls12_381SecretKey> for SecretKey {
+    fn from(value: Bls12_381SecretKey) -> Self {
+        Self::Bls12_381(value)
+    }
+}
+
 /// Group of base58 encoded public keys.
 ///
 /// See:
@@ -270,6 +289,7 @@ pub enum PublicKey {
     Ed25519(Ed25519PublicKey),
     Secp256K1(Secp256K1PublicKey),
     P256(P256PublicKey),
+    Bls12_381(Bls12_381PublicKey),
 }
 
 impl PublicKey {
@@ -277,12 +297,14 @@ impl PublicKey {
         Ed25519PublicKey::is_valid_base58(value)
             || Secp256K1PublicKey::is_valid_base58(value)
             || P256PublicKey::is_valid_base58(value)
+            || Bls12_381PublicKey::is_valid_base58(value)
     }
 
     pub fn is_valid_bytes(value: &[u8]) -> bool {
         Ed25519PublicKey::is_valid_bytes(value)
             || Secp256K1PublicKey::is_valid_bytes(value)
             || P256PublicKey::is_valid_bytes(value)
+            || Bls12_381PublicKey::is_valid_bytes(value)
     }
 
     /// Base58 encoded address
@@ -305,6 +327,9 @@ impl PublicKey {
             Self::P256(value) => {
                 ImplicitAddress::from(address_of::<P256PublicKeyHash>(&value.to_bytes()?)?)
             }
+            Self::Bls12_381(value) => {
+                ImplicitAddress::from(address_of::<Bls12_381PublicKeyHash>(&value.to_bytes()?)?)
+            }
         };
 
         Ok(address)
@@ -319,6 +344,7 @@ impl Encoded for PublicKey {
             Self::Ed25519(value) => value.value(),
             Self::Secp256K1(value) => value.value(),
             Self::P256(value) => value.value(),
+            Self::Bls12_381(value) => value.value(),
         }
     }
 
@@ -327,6 +353,7 @@ impl Encoded for PublicKey {
             Self::Ed25519(value) => value.meta(),
             Self::Secp256K1(value) => value.meta(),
             Self::P256(value) => value.meta(),
+            Self::Bls12_381(value) => value.meta(),
         }
     }
 
@@ -340,6 +367,9 @@ impl Encoded for PublicKey {
         if P256PublicKey::is_valid_base58(&value) {
             return Ok(Self::P256(P256PublicKey::new(value)?));
         }
+        if Bls12_381PublicKey::is_valid_base58(&value) {
+            return Ok(Self::Bls12_381(Bls12_381PublicKey::new(value)?));
+        }
         Err(Error::InvalidBase58EncodedData { description: value })
     }
 }
@@ -350,6 +380,7 @@ impl From<PublicKey> for String {
             PublicKey::Ed25519(value) => value.into(),
             PublicKey::Secp256K1(value) => value.into(),
             PublicKey::P256(value) => value.into(),
+            PublicKey::Bls12_381(value) => value.into(),
         }
     }
 }
@@ -401,6 +432,12 @@ impl From<Secp256K1PublicKey> for PublicKey {
 impl From<P256PublicKey> for PublicKey {
     fn from(value: P256PublicKey) -> Self {
         Self::P256(value)
+    }
+}
+
+impl From<Bls12_381PublicKey> for PublicKey {
+    fn from(value: Bls12_381PublicKey) -> Self {
+        Self::Bls12_381(value)
     }
 }
 
@@ -587,6 +624,90 @@ mod test {
             assert_eq!(
                 key.value(),
                 "p2sk2Xoduh8dx6B3smV81NMV25cYpZJj7yYWMRARedzyJae8SB9auw"
+            );
+            return Ok(());
+        }
+        Err(Error::InvalidConversion)
+    }
+    #[test]
+    fn test_bls12_381_key_public() -> Result<()> {
+        let key: Key =
+            "BLpk1EAJYh9xuwXX2PbevaNLNwRWGcTJ5q6corWkUqJtRJXhSCtAAmSUcqs4BZTqUaUxhtxvMGHZ"
+                .try_into()?;
+        if let Key::Public(pk) = key {
+            assert_eq!(
+                pk.value(),
+                "BLpk1EAJYh9xuwXX2PbevaNLNwRWGcTJ5q6corWkUqJtRJXhSCtAAmSUcqs4BZTqUaUxhtxvMGHZ"
+            );
+            return Ok(());
+        }
+        Err(Error::InvalidConversion)
+    }
+
+    #[test]
+    fn test_bls12_381_key_secret() -> Result<()> {
+        // BLsk bytes = 1..=32 per your encoded.rs entry
+        let key: Key = "BLsk1WMaoyRDXHuLDViHoExYpeCE52AH9y3n2YZUrF1yYPqgkMxLQB".try_into()?;
+        if let Key::Secret(sk) = key {
+            assert_eq!(
+                sk.value(),
+                "BLsk1WMaoyRDXHuLDViHoExYpeCE52AH9y3n2YZUrF1yYPqgkMxLQB"
+            );
+            return Ok(());
+        }
+        Err(Error::InvalidConversion)
+    }
+
+    #[test]
+    fn test_blpk_public_key_variant() -> Result<()> {
+        let key: PublicKey =
+            "BLpk1EAJYh9xuwXX2PbevaNLNwRWGcTJ5q6corWkUqJtRJXhSCtAAmSUcqs4BZTqUaUxhtxvMGHZ"
+                .try_into()?;
+        if let PublicKey::Bls12_381(pk) = key {
+            assert_eq!(
+                pk.value(),
+                "BLpk1EAJYh9xuwXX2PbevaNLNwRWGcTJ5q6corWkUqJtRJXhSCtAAmSUcqs4BZTqUaUxhtxvMGHZ"
+            );
+            return Ok(());
+        }
+        Err(Error::InvalidConversion)
+    }
+
+    #[test]
+    fn test_blpk_to_tz4() {
+        // Public key (raw BLpk bytes = 1..=48, as in encoded.rs)
+        let key: PublicKey =
+            "BLpk1EAJYh9xuwXX2PbevaNLNwRWGcTJ5q6corWkUqJtRJXhSCtAAmSUcqs4BZTqUaUxhtxvMGHZ"
+                .try_into()
+                .unwrap();
+
+        // What bs58_address() returns
+        let address = key.bs58_address().unwrap();
+
+        // Expected tz4 = blake2b-160 over RAW BLpk bytes (NOT tagged),
+        // then Base58Check with the tz4 meta (bytes_prefix [6,161,166]).
+        let blpk: Bls12_381PublicKey =
+            "BLpk1EAJYh9xuwXX2PbevaNLNwRWGcTJ5q6corWkUqJtRJXhSCtAAmSUcqs4BZTqUaUxhtxvMGHZ"
+                .try_into()
+                .unwrap();
+        let raw = blpk.to_bytes().unwrap(); // 48 bytes
+        let h160 = blake2b(&raw, 20).unwrap();
+        let expected = Bls12_381PublicKeyHash::from_bytes(&h160)
+            .unwrap()
+            .into_string();
+
+        assert_eq!(address, expected);
+        assert!(address.starts_with("tz4"));
+        assert_eq!(address.len(), 36);
+    }
+
+    #[test]
+    fn test_bls12_381_secret_key_variant() -> Result<()> {
+        let key: SecretKey = "BLsk1WMaoyRDXHuLDViHoExYpeCE52AH9y3n2YZUrF1yYPqgkMxLQB".try_into()?;
+        if let SecretKey::Bls12_381(sk) = key {
+            assert_eq!(
+                sk.value(),
+                "BLsk1WMaoyRDXHuLDViHoExYpeCE52AH9y3n2YZUrF1yYPqgkMxLQB"
             );
             return Ok(());
         }

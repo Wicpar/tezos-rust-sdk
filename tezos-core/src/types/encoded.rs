@@ -731,19 +731,6 @@ make_encoded_structs!(
         use {
             internal::coder::EncodedBytesCoder,
         }
-        struct tx_rollup_l2_address::TxRollupL2Address;
-        coder: EncodedBytesCoder;
-        meta {
-            base58_prefix: "tz4",
-            base58_length: 36,
-            bytes_prefix: [6, 161, 166,],
-            bytes_length: 20,
-        }
-    },
-    {
-        use {
-            internal::coder::EncodedBytesCoder,
-        }
         struct withdraw_list_hash::WithdrawListHash;
         coder: EncodedBytesCoder;
         meta {
@@ -789,6 +776,93 @@ make_encoded_structs!(
             string_value: "sr1AqF5LDHZKeVyeNTCXueErVDi1S61PzTRD",
             bytes_value: [
                 52, 142, 195, 75, 199, 253, 40, 202, 117, 54, 126, 155, 18, 69, 127, 11,31, 31, 206, 127,
+            ],
+        }
+    },
+    {
+        use {
+            internal::coder::EncodedBytesCoder,
+        }
+        struct bls12_381_public_key_hash::Bls12_381PublicKeyHash;
+        coder: EncodedBytesCoder;
+        meta {
+            base58_prefix: "tz4",
+            base58_length: 36,
+            bytes_prefix: [6, 161, 166,],
+            bytes_length: 20,
+        }
+        test {
+            string_value: "tz496afrNbzJu2jtMFwkELNm5WPumbzCEh2S",
+            bytes_value: [
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+            ],
+        }
+    },
+    {
+        use {
+            internal::coder::EncodedBytesCoder,
+        }
+        struct bls12_381_public_key::Bls12_381PublicKey;
+        coder: EncodedBytesCoder;
+        meta {
+            base58_prefix: "BLpk",
+            base58_length: 76,
+            bytes_prefix: [6, 149, 135, 204,],
+            bytes_length: 48,
+        }
+        test {
+            string_value: "BLpk1EAJYh9xuwXX2PbevaNLNwRWGcTJ5q6corWkUqJtRJXhSCtAAmSUcqs4BZTqUaUxhtxvMGHZ",
+            bytes_value: [
+                 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
+                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+                33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+            ],
+        }
+    },
+    {
+        use {
+            internal::coder::EncodedBytesCoder,
+        }
+        struct bls12_381_signature::Bls12_381Signature;
+        coder: EncodedBytesCoder;
+        meta {
+            base58_prefix: "BLsig",
+            base58_length: 142,
+            bytes_prefix: [40, 171, 64, 207,],
+            bytes_length: 96,
+        }
+        test {
+            string_value: "BLsig4a49so2npprjFRaaemvPKk53QqhzguUjbbYnDapa43hqKkWNtSsf8KoWV5EPMKAtZNrtnycajSELFsQsqdyLca1nGJWxuRjdeH9K2QUnp2RacGUv19Em2LUqcAZXmmjV4WFSP2SpE",
+            bytes_value: [
+                 1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
+                17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+                33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+                49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+                65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+                81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
+            ],
+        }
+    },
+    {
+        use {
+            internal::coder::EncodedBytesCoder,
+        }
+        struct bls12_381_secret_key::Bls12_381SecretKey;
+        coder: EncodedBytesCoder;
+        meta {
+            base58_prefix: "BLsk",
+            base58_length: 54,
+            bytes_prefix: [3, 150, 192, 40,],
+            bytes_length: 32,
+        }
+        test {
+            // bytes = 1..=32; base58check(version=3, data=[150,192,40]||bytes)
+            string_value: "BLsk1WMaoyRDXHuLDViHoExYpeCE52AH9y3n2YZUrF1yYPqgkMxLQB",
+            bytes_value: [
+                 1,  2,  3,  4,  5,  6,  7,  8,
+                 9, 10, 11, 12, 13, 14, 15, 16,
+                17, 18, 19, 20, 21, 22, 23, 24,
+                25, 26, 27, 28, 29, 30, 31, 32,
             ],
         }
     },

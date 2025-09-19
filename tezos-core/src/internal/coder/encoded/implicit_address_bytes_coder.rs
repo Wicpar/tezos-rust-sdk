@@ -7,8 +7,8 @@ use crate::{
         types::{BytesTag, EncodedTag},
     },
     types::encoded::{
-        Ed25519PublicKeyHash, ImplicitAddress, MetaEncoded, P256PublicKeyHash,
-        Secp256K1PublicKeyHash, TraitMetaEncoded,
+        Bls12_381PublicKeyHash, Ed25519PublicKeyHash, ImplicitAddress, MetaEncoded,
+        P256PublicKeyHash, Secp256K1PublicKeyHash, TraitMetaEncoded,
     },
     Error, Result,
 };
@@ -40,6 +40,7 @@ pub enum ImplicitAddressTag {
     TZ1,
     TZ2,
     TZ3,
+    TZ4,
 }
 
 impl BytesTag for ImplicitAddressTag {
@@ -48,21 +49,23 @@ impl BytesTag for ImplicitAddressTag {
             Self::TZ1 => &[0],
             Self::TZ2 => &[1],
             Self::TZ3 => &[2],
+            Self::TZ4 => &[3],
         }
     }
 }
 
 impl EncodedTag for ImplicitAddressTag {
-    fn values() -> &'static [Self] {
-        &[Self::TZ1, Self::TZ2, Self::TZ3]
-    }
-
     fn meta(&self) -> &MetaEncoded {
         match self {
             Self::TZ1 => Ed25519PublicKeyHash::meta_value(),
             Self::TZ2 => Secp256K1PublicKeyHash::meta_value(),
             Self::TZ3 => P256PublicKeyHash::meta_value(),
+            Self::TZ4 => Bls12_381PublicKeyHash::meta_value(),
         }
+    }
+
+    fn values() -> &'static [Self] {
+        &[Self::TZ1, Self::TZ2, Self::TZ3, Self::TZ4]
     }
 }
 

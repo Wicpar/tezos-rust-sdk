@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     contract_hash::ContractHash, ed25519_public_key_hash::Ed25519PublicKeyHash,
     p256_public_key_hash::P256PublicKeyHash, secp256_k1_public_key_hash::Secp256K1PublicKeyHash,
-    Encoded, MetaEncoded, TraitMetaEncoded,
+    Bls12_381PublicKeyHash, Encoded, MetaEncoded, TraitMetaEncoded,
 };
 use crate::{
     internal::coder::{AddressBytesCoder, ContractAddressBytesCoder, ImplicitAddressBytesCoder},
@@ -152,6 +152,7 @@ pub enum ImplicitAddress {
     TZ1(Ed25519PublicKeyHash),
     TZ2(Secp256K1PublicKeyHash),
     TZ3(P256PublicKeyHash),
+    TZ4(Bls12_381PublicKeyHash),
 }
 
 impl ImplicitAddress {
@@ -159,12 +160,14 @@ impl ImplicitAddress {
         Ed25519PublicKeyHash::is_valid_base58(value)
             || Secp256K1PublicKeyHash::is_valid_base58(value)
             || P256PublicKeyHash::is_valid_base58(value)
+            || Bls12_381PublicKeyHash::is_valid_base58(value)
     }
 
     pub fn is_valid_bytes(value: &[u8]) -> bool {
         Ed25519PublicKeyHash::is_valid_prefixed_bytes(value)
             || Secp256K1PublicKeyHash::is_valid_prefixed_bytes(value)
             || P256PublicKeyHash::is_valid_prefixed_bytes(value)
+            || Bls12_381PublicKeyHash::is_valid_prefixed_bytes(value)
     }
 }
 
@@ -176,6 +179,7 @@ impl Encoded for ImplicitAddress {
             Self::TZ1(address) => address.value(),
             Self::TZ2(address) => address.value(),
             Self::TZ3(address) => address.value(),
+            Self::TZ4(address) => address.value(),
         }
     }
 
@@ -184,6 +188,7 @@ impl Encoded for ImplicitAddress {
             Self::TZ1(address) => address.meta(),
             Self::TZ2(address) => address.meta(),
             Self::TZ3(address) => address.meta(),
+            Self::TZ4(address) => address.meta(),
         }
     }
 
@@ -197,6 +202,9 @@ impl Encoded for ImplicitAddress {
         if P256PublicKeyHash::is_valid_base58(&value) {
             return Ok(Self::TZ3(P256PublicKeyHash::new(value)?));
         }
+        if Bls12_381PublicKeyHash::is_valid_base58(&value) {
+            return Ok(Self::TZ4(Bls12_381PublicKeyHash::new(value)?));
+        }
         Err(Error::InvalidBase58EncodedData { description: value })
     }
 }
@@ -207,6 +215,7 @@ impl From<ImplicitAddress> for String {
             ImplicitAddress::TZ1(value) => value.into(),
             ImplicitAddress::TZ2(value) => value.into(),
             ImplicitAddress::TZ3(value) => value.into(),
+            ImplicitAddress::TZ4(value) => value.into(),
         }
     }
 }
@@ -269,6 +278,12 @@ impl From<Secp256K1PublicKeyHash> for ImplicitAddress {
 impl From<P256PublicKeyHash> for ImplicitAddress {
     fn from(value: P256PublicKeyHash) -> Self {
         Self::TZ3(value)
+    }
+}
+
+impl From<Bls12_381PublicKeyHash> for ImplicitAddress {
+    fn from(value: Bls12_381PublicKeyHash) -> Self {
+        Self::TZ4(value)
     }
 }
 
@@ -494,5 +509,133 @@ mod test {
             return Ok(());
         }
         Err(Error::InvalidConversion)
+    }
+
+    #[test]
+    fn test_tz4_address() -> Result<()> {
+        let address: Address = "tz496afrNbzJu2jtMFwkELNm5WPumbzCEh2S".try_into()?;
+        if let Address::Implicit(value) = address {
+            assert_eq!(value.value(), "tz496afrNbzJu2jtMFwkELNm5WPumbzCEh2S");
+            return Ok(());
+        }
+        Err(Error::InvalidConversion)
+    }
+
+    #[test]
+    fn test_tz4_implicit_address() -> Result<()> {
+        let address: Address = "tz496afrNbzJu2jtMFwkELNm5WPumbzCEh2S".try_into()?;
+        if let Address::Implicit(ImplicitAddress::TZ4(value)) = address {
+            assert_eq!(value.value(), "tz496afrNbzJu2jtMFwkELNm5WPumbzCEh2S");
+            return Ok(());
+        }
+        Err(Error::InvalidConversion)
+    }
+
+    // --- ContractAddress with entrypoint parsing/formatting ---
+
+    #[test]
+    fn test_kt1_address_with_entrypoint_as_address() -> Result<()> {
+        // valid base, with entrypoint suffix
+        let address: Address = "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo%do".try_into()?;
+        if let Address::Originated(value) = address {
+            assert_eq!(value.value(), "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo%do");
+            assert_eq!(
+                value.contract_hash(),
+                "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo"
+            );
+            assert_eq!(value.entrypoint(), Some("do"));
+            return Ok(());
+        }
+        Err(Error::InvalidConversion)
+    }
+
+    #[test]
+    fn test_contract_address_from_components() -> Result<()> {
+        let base: ContractHash = "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo".try_into()?;
+        let ca = ContractAddress::from_components(&base, Some("ep"));
+        assert_eq!(ca.value(), "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo%ep");
+        assert_eq!(ca.contract_hash(), "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo");
+        assert_eq!(ca.entrypoint(), Some("ep"));
+
+        let ca_no_ep = ContractAddress::from_components(&base, None);
+        assert_eq!(ca_no_ep.value(), "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo");
+        assert_eq!(ca_no_ep.entrypoint(), None);
+        Ok(())
+    }
+
+    #[test]
+    fn test_contract_address_is_valid_base58_true_and_false() {
+        // true: base is a valid KT1, entrypoint present
+        assert!(ContractAddress::is_valid_base58(
+            "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo%entry"
+        ));
+
+        // false: base is not a KT1 (it's a tz1)
+        assert!(!ContractAddress::is_valid_base58(
+            "tz1Mj7RzPmMAqDUNFBn5t5VbXmWW4cSUAdtT%entry"
+        ));
+    }
+
+    #[test]
+    fn test_contract_address_split_components_error() {
+        // too many '%' should error
+        let bad = "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo%a%b";
+        let res = ContractAddress::try_from(bad);
+        assert!(matches!(res, Err(Error::InvalidContractAddress)));
+    }
+
+    // --- Conversions between Address <-> ContractAddress / ContractHash / ImplicitAddress ---
+
+    #[test]
+    fn test_address_from_contract_hash() -> Result<()> {
+        let ch: ContractHash = "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo".try_into()?;
+        let addr: Address = Address::from(&ch);
+        if let Address::Originated(ca) = addr {
+            assert_eq!(ca.value(), "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo");
+            return Ok(());
+        }
+        Err(Error::InvalidConversion)
+    }
+
+    #[test]
+    fn test_contractaddress_try_from_address_success_and_fail() -> Result<()> {
+        // success: originated
+        let addr: Address = "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo%do".try_into()?;
+        let ca: ContractAddress = addr.clone().try_into()?;
+        assert_eq!(ca.contract_hash(), "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo");
+        assert_eq!(ca.entrypoint(), Some("do"));
+
+        // fail: implicit
+        let implicit: Address = "tz1Mj7RzPmMAqDUNFBn5t5VbXmWW4cSUAdtT".try_into()?;
+        let res: Result<ContractAddress> = implicit.try_into();
+        assert!(matches!(res, Err(Error::InvalidAddress)));
+        Ok(())
+    }
+
+    #[test]
+    fn test_implicitaddress_try_from_address_success_and_fail() -> Result<()> {
+        // success: implicit tz4
+        let addr: Address = "tz496afrNbzJu2jtMFwkELNm5WPumbzCEh2S".try_into()?;
+        let ia: ImplicitAddress = addr.clone().try_into()?;
+        if let ImplicitAddress::TZ4(v) = ia {
+            assert_eq!(v.value(), "tz496afrNbzJu2jtMFwkELNm5WPumbzCEh2S");
+        } else {
+            return Err(Error::InvalidConversion);
+        }
+
+        // fail: originated
+        let originated: Address = "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo".try_into()?;
+        let res: Result<ImplicitAddress> = originated.try_into();
+        assert!(matches!(res, Err(Error::InvalidAddress)));
+        Ok(())
+    }
+
+    #[test]
+    fn test_contracthash_try_from_address_with_entrypoint() -> Result<()> {
+        // Address -> ContractHash should discard entrypoint
+        let addr: Address = "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo%default".try_into()?;
+        let ch: ContractHash = addr.try_into()?;
+        assert_eq!(ch.value(), "KT1QTcAXeefhJ3iXLurRt81WRKdv7YqyYFmo");
+        Ok(())
     }
 }

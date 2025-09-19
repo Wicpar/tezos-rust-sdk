@@ -6,8 +6,8 @@ use {
     serde::{Deserialize, Serialize},
     tezos_core::types::{
         encoded::{
-            ContextHash, ImplicitAddress, InboxHash, MessageResultHash, MessageResultListHash,
-            ScriptExprHash, TxRollupId, TxRollupL2Address, WithdrawListHash,
+            Bls12_381PublicKeyHash, ContextHash, ImplicitAddress, InboxHash, MessageResultHash,
+            MessageResultListHash, ScriptExprHash, TxRollupId, WithdrawListHash,
         },
         mutez::Mutez,
     },
@@ -58,7 +58,7 @@ pub struct TxRollupRejectionBatchMessage {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TxRollupRejectionDepositMessage {
     pub sender: ImplicitAddress,
-    pub destination: TxRollupL2Address,
+    pub destination: Bls12_381PublicKeyHash,
     pub ticket_hash: ScriptExprHash,
     pub amount: Mutez,
 }

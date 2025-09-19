@@ -10,8 +10,8 @@ use crate::{
         types::{BytesTag, EncodedTag},
     },
     types::encoded::{
-        Ed25519PublicKey, MetaEncoded, P256PublicKey, PublicKey, Secp256K1PublicKey,
-        TraitMetaEncoded,
+        Bls12_381PublicKey, Ed25519PublicKey, MetaEncoded, P256PublicKey, PublicKey,
+        Secp256K1PublicKey, TraitMetaEncoded,
     },
     Error, Result,
 };
@@ -41,6 +41,7 @@ pub enum PublicKeyTag {
     EdPK,
     SpPK,
     P2PK,
+    BlPK,
 }
 
 impl PublicKeyTag {
@@ -58,21 +59,23 @@ impl BytesTag for PublicKeyTag {
             Self::EdPK => &[0],
             Self::SpPK => &[1],
             Self::P2PK => &[2],
+            Self::BlPK => &[3],
         }
     }
 }
 
 impl EncodedTag for PublicKeyTag {
-    fn values() -> &'static [Self] {
-        &[Self::EdPK, Self::SpPK, Self::P2PK]
-    }
-
     fn meta(&self) -> &MetaEncoded {
         match self {
             Self::EdPK => Ed25519PublicKey::meta_value(),
             Self::SpPK => Secp256K1PublicKey::meta_value(),
             Self::P2PK => P256PublicKey::meta_value(),
+            Self::BlPK => Bls12_381PublicKey::meta_value(),
         }
+    }
+
+    fn values() -> &'static [Self] {
+        &[Self::EdPK, Self::SpPK, Self::P2PK, Self::BlPK]
     }
 }
 
@@ -196,6 +199,43 @@ mod test {
         assert_eq!(
             key.value(),
             "p2pkE3k5ZLRUvXTtjqGesGCZQBQjPE1cZghFFAmZTeQm7WNTwfsqeZg"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_encode_4() -> Result<()> {
+        // BLpk from your encoded.rs test vector (48 raw bytes = 1..=48)
+        let key: PublicKey =
+            "BLpk1EAJYh9xuwXX2PbevaNLNwRWGcTJ5q6corWkUqJtRJXhSCtAAmSUcqs4BZTqUaUxhtxvMGHZ"
+                .try_into()?;
+        let bytes = PublicKeyBytesCoder::encode(&key)?;
+        assert_eq!(
+            bytes,
+            [
+                3, // BlPK tag
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
+                45, 46, 47, 48,
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_decode_4() -> Result<()> {
+        let bytes = [
+            3, // BlPK tag
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46,
+            47, 48,
+        ]
+        .to_vec();
+
+        let key = PublicKeyBytesCoder::decode(&bytes)?;
+        assert_eq!(
+            key.value(),
+            "BLpk1EAJYh9xuwXX2PbevaNLNwRWGcTJ5q6corWkUqJtRJXhSCtAAmSUcqs4BZTqUaUxhtxvMGHZ"
         );
         Ok(())
     }
