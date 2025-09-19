@@ -19,6 +19,8 @@
 //!         - [Secp256K1PublicKeyHash](crate::types::encoded::Secp256K1PublicKeyHash)
 //!       - **tz3**
 //!         - [P256PublicKeyHash](crate::types::encoded::P256PublicKeyHash)
+//!       - **tz4**
+//!         - [Bls12_381PublicKeyHash](crate::types::encoded::Bls12_381PublicKeyHash)
 //!     - **KT1**
 //!         - [ContractAddress](crate::types::encoded::ContractAddress)
 //!
