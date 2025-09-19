@@ -138,6 +138,8 @@ use crate::crypto::default::DefaultEd25519CryptoProvider;
 use crate::crypto::default::DefaultP256CryptoProvider;
 #[cfg(feature = "secp256_k1")]
 use crate::crypto::default::DefaultSecp256K1CryptoProvider;
+#[cfg(feature = "bls12_381")]
+use crate::crypto::default::DefaultBls12_381CryptoProvider;
 use crate::internal::crypto::Crypto;
 pub use crate::{
     crypto::CryptoProvider,
