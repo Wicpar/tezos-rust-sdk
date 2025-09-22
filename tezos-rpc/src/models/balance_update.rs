@@ -1,10 +1,12 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(untagged)]
 pub enum BalanceUpdate {
     Contract(Contract),
     Categorized(CategorizedBalanceUpdate),
+    Unknown(Value)
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq)]
