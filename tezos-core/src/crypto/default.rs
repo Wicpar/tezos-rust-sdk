@@ -16,9 +16,13 @@ pub struct DefaultEd25519CryptoProvider;
 #[cfg(feature = "ed25519")]
 impl CryptoProvider for DefaultEd25519CryptoProvider {
     fn sign(&self, message: &[u8], secret: &[u8]) -> Result<Vec<u8>> {
-        use ed25519_dalek::{Keypair, Signer};
+        use ed25519_dalek::{Signer, SigningKey};
 
-        let keypair = Keypair::from_bytes(secret).map_err(|_| Error::InvalidSecretKeyBytes)?;
+        // ed25519-dalek 2 (RUSTSEC-2022-0093): the 64-byte Tezos secret key is the 32-byte seed
+        // followed by its public key; `from_keypair_bytes` refuses a public key that does not match
+        // the seed, where version 1 signed with whatever public key it was given.
+        let bytes: &[u8; 64] = secret.try_into().map_err(|_| Error::InvalidSecretKeyBytes)?;
+        let keypair = SigningKey::from_keypair_bytes(bytes).map_err(|_| Error::InvalidSecretKeyBytes)?;
         let signature = keypair.sign(message);
 
         Ok(signature.to_bytes().to_vec())
@@ -30,12 +34,15 @@ impl CryptoProvider for DefaultEd25519CryptoProvider {
         signature_bytes: &[u8],
         public_key_bytes: &[u8],
     ) -> Result<bool> {
-        use ed25519_dalek::{PublicKey, Signature, Verifier};
+        use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
+        let public_key_bytes: &[u8; 32] = public_key_bytes
+            .try_into()
+            .map_err(|_| Error::InvalidPublicKeyBytes)?;
         let public_key =
-            PublicKey::from_bytes(public_key_bytes).map_err(|_| Error::InvalidPublicKeyBytes)?;
+            VerifyingKey::from_bytes(public_key_bytes).map_err(|_| Error::InvalidPublicKeyBytes)?;
         let signature =
-            Signature::from_bytes(signature_bytes).map_err(|_| Error::InvalidSignatureBytes)?;
+            Signature::from_slice(signature_bytes).map_err(|_| Error::InvalidSignatureBytes)?;
 
         Ok(public_key.verify(message, &signature).is_ok())
     }
